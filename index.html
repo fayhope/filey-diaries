@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Filey Diaries" />
+  <meta name="theme-color" content="#0a2540" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <title>Filey Diaries</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+
+  <!-- Bottom Nav -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-view="map">
+      <span class="nav-icon">🗺️</span>
+      <span>Map</span>
+    </button>
+    <button class="nav-btn" data-view="diary">
+      <span class="nav-icon">📔</span>
+      <span>Diary</span>
+    </button>
+    <button class="nav-btn" data-view="calendar">
+      <span class="nav-icon">📅</span>
+      <span>Calendar</span>
+    </button>
+  </nav>
+
+  <!-- MAP VIEW -->
+  <div id="view-map" class="view active">
+    <div class="view-header">
+      <h1>🌊 Filey Diaries</h1>
+      <div class="toggles">
+        <label class="toggle-label">
+          <span>Salah 🐱</span>
+          <div class="toggle-wrap">
+            <input type="checkbox" id="toggle-salah" />
+            <span class="toggle-slider"></span>
+          </div>
+        </label>
+      </div>
+    </div>
+    <div id="map"></div>
+  </div>
+
+  <!-- DIARY VIEW -->
+  <div id="view-diary" class="view">
+    <div class="view-header">
+      <h1>📔 My Trips</h1>
+      <button class="btn-primary" id="new-trip-btn">+ New Trip</button>
+    </div>
+    <div id="trips-list" class="trips-list"></div>
+  </div>
+
+  <!-- CALENDAR VIEW -->
+  <div id="view-calendar" class="view">
+    <div class="view-header">
+      <h1>📅 Calendar</h1>
+    </div>
+    <div class="calendar-nav">
+      <button id="cal-prev">‹</button>
+      <span id="cal-month-label"></span>
+      <button id="cal-next">›</button>
+    </div>
+    <div id="calendar-grid" class="calendar-grid"></div>
+  </div>
+
+  <!-- MODAL: New / Edit Trip -->
+  <div id="trip-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h2 id="modal-title">New Trip</h2>
+        <button id="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <label>Trip name</label>
+        <input type="text" id="trip-name" placeholder="e.g. Summer 2024" />
+
+        <label>Dates</label>
+        <div class="date-row">
+          <input type="date" id="trip-start" />
+          <span>→</span>
+          <input type="date" id="trip-end" />
+        </div>
+
+        <label>Who came?</label>
+        <div id="companions-wrap">
+          <div class="companion-tags" id="companion-tags"></div>
+          <div class="companion-input-row">
+            <input type="text" id="companion-input" placeholder="Add a person…" />
+            <button id="companion-add">Add</button>
+          </div>
+        </div>
+
+        <label>Photos</label>
+        <input type="file" id="photo-input" accept="image/*" multiple />
+        <div id="photo-previews" class="photo-previews"></div>
+
+        <label>Notes</label>
+        <textarea id="trip-notes" placeholder="What did you get up to?"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button id="save-trip" class="btn-primary">Save Trip</button>
+        <button id="delete-trip" class="btn-danger hidden">Delete Trip</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Day Detail (from calendar) -->
+  <div id="day-modal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-sheet">
+      <div class="modal-header">
+        <h2 id="day-modal-title">Day</h2>
+        <button id="day-modal-close">✕</button>
+      </div>
+      <div id="day-modal-body" class="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
