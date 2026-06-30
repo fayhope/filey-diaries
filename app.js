@@ -7,28 +7,25 @@ const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const PASSWORD = 'fayisthebest';
 const AUTH_KEY = 'filey_authed';
 
-function isAuthed() { return localStorage.getItem(AUTH_KEY) === '1'; }
-
 document.getElementById('password-btn').addEventListener('click', tryUnlock);
 document.getElementById('password-input').addEventListener('keydown', e => { if (e.key === 'Enter') tryUnlock(); });
 
 function tryUnlock() {
-  const val = document.getElementById('password-input').value;
-  if (val === PASSWORD) {
+  if (document.getElementById('password-input').value === PASSWORD) {
     localStorage.setItem(AUTH_KEY, '1');
     document.getElementById('lock-screen').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
-    initApp();
+    startApp();
   } else {
     document.getElementById('password-error').classList.remove('hidden');
     document.getElementById('password-input').value = '';
   }
 }
 
-if (isAuthed()) {
+if (localStorage.getItem(AUTH_KEY) === '1') {
   document.getElementById('lock-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  initApp();
+  startApp();
 }
 
 // ── PHOTO COMPRESSION ──
@@ -52,8 +49,8 @@ function compressImage(file, maxDim = 1200, quality = 0.75) {
   });
 }
 
-// ── MAIN APP ──
-async function initApp() {
+// ── APP ──
+function startApp() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 
   // Map
@@ -65,31 +62,20 @@ async function initApp() {
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
   // State
-  let entries = {}; // { "YYYY-MM-DD": { notes, salah, companions, photo_urls } }
-  let calYear, calMonth, activeDate = null;
-  let pendingPhotos = []; // { url: string, isNew: bool, file?: Blob }
+  let entries = {};
+  let calYear = new Date().getFullYear();
+  let calMonth = new Date().getMonth();
+  let activeDate = null;
+  let pendingPhotos = [];
   let pendingCompanions = [];
   const now = new Date();
-  calYear = now.getFullYear(); calMonth = now.getMonth();
-
-  // Load all entries from Supabase
-  async function fetchEntries() {
-    const { data, error } = await db.from('diary_entries').select('*');
-    if (error) { console.error(error); return; }
-    entries = {};
-    (data || []).forEach(row => { entries[row.date] = row; });
-  }
-
-  await fetchEntries();
-  renderHome();
-  renderCalendar();
-
-  // ── STATS ──
   const START_DATE = new Date('2026-03-27');
 
-  function pad(n) { return String(n).padStart(2, '0'); }
-  function toKey(y, m, d) { return `${y}-${pad(m+1)}-${pad(d)}`; }
-  function todayKey() { return toKey(now.getFullYear(), now.getMonth(), now.getDate()); }
+  // ── HELPERS ──
+  const pad = n => String(n).padStart(2, '0');
+  const toKey = (y, m, d) => `${y}-${pad(m+1)}-${pad(d)}`;
+  const todayKey = () => toKey(now.getFullYear(), now.getMonth(), now.getDate());
+  const hasContent = e => e && (e.notes || (e.photo_urls && e.photo_urls.length) || e.salah || (e.companions && e.companions.length));
 
   function datesBetween(a, b) {
     const dates = [], cur = new Date(a);
@@ -97,53 +83,7 @@ async function initApp() {
     return dates;
   }
 
-  function hasContent(e) {
-    return e && (e.notes || (e.photo_urls && e.photo_urls.length) || e.salah || (e.companions && e.companions.length));
-  }
-
-  function computeStats() {
-    const allDates = datesBetween(START_DATE, now);
-    const fileyDays = allDates.filter(d => hasContent(entries[d]));
-    const pct = allDates.length > 0 ? Math.round((fileyDays.length / allDates.length) * 100) : 0;
-
-    const sorted = [...fileyDays].sort();
-    let trips = 0;
-    sorted.forEach((d, i) => {
-      const prev = sorted[i-1];
-      if (!prev || (new Date(d) - new Date(prev)) / 86400000 > 1) trips++;
-    });
-
-    const salahDays = Object.keys(entries).filter(d => entries[d] && entries[d].salah).sort();
-    let salahTrips = 0;
-    salahDays.forEach((d, i) => {
-      const prev = salahDays[i-1];
-      if (!prev || (new Date(d) - new Date(prev)) / 86400000 > 1) salahTrips++;
-    });
-
-    const companionCount = {};
-    Object.values(entries).forEach(e => {
-      (e.companions || []).forEach(c => { companionCount[c] = (companionCount[c] || 0) + 1; });
-    });
-
-    return { total: allDates.length, filey: fileyDays.length, pct, trips, salahTrips, companionCount };
-  }
-
-  function renderHome() {
-    const { total, filey, pct, trips, salahTrips, companionCount } = computeStats();
-    document.getElementById('stat-days').textContent = filey;
-    document.getElementById('stat-days-sub').textContent = `out of ${total} days since 27 Mar 2026 · ${pct}%`;
-    document.getElementById('progress-fill').style.width = pct + '%';
-    document.getElementById('stat-trips').textContent = trips;
-    document.getElementById('stat-salah').textContent = salahTrips;
-
-    const people = Object.entries(companionCount).sort((a,b) => b[1]-a[1]);
-    const list = document.getElementById('people-list');
-    list.innerHTML = people.length
-      ? people.map(([name, count]) => `<div class="person-row"><span class="person-name">👤 ${name}</span><span class="person-count">${count} day${count!==1?'s':''}</span></div>`).join('')
-      : '<p class="no-people">Add people when logging a day 👆</p>';
-  }
-
-  // ── NAV ──
+  // ── NAV ── (wired up immediately, no async dependency)
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -164,7 +104,6 @@ async function initApp() {
     const firstDow = (new Date(calYear, calMonth, 1).getDay() + 6) % 7;
     const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
     const today = todayKey();
-
     let html = '';
     for (let i = 0; i < firstDow; i++) html += '<div class="day empty"></div>';
     for (let d = 1; d <= daysInMonth; d++) {
@@ -176,10 +115,7 @@ async function initApp() {
       if (has) {
         html += `<div class="day has-entry${key===today?' today':''}" data-key="${key}">
           ${thumb ? `<img class="day-bg" src="${thumb}" />` : '<div class="day-bg-plain"></div>'}
-          <div class="day-inner">
-            <span class="day-emoji">${salah?'🐱':'🏖️'}</span>
-            <span class="day-num">${d}</span>
-          </div>
+          <div class="day-inner"><span class="day-emoji">${salah?'🐱':'🏖️'}</span><span class="day-num">${d}</span></div>
         </div>`;
       } else {
         html += `<div class="day${key===today?' today':''}" data-key="${key}">
@@ -194,37 +130,64 @@ async function initApp() {
   }
 
   document.getElementById('prev-btn').addEventListener('click', () => {
-    calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; }
-    renderCalendar();
+    calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar();
   });
   document.getElementById('next-btn').addEventListener('click', () => {
-    calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; }
-    renderCalendar();
+    calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar();
   });
+
+  // ── HOME ──
+  function renderHome() {
+    const allDates = datesBetween(START_DATE, now);
+    const fileyDays = allDates.filter(d => hasContent(entries[d]));
+    const pct = allDates.length ? Math.round(fileyDays.length / allDates.length * 100) : 0;
+
+    let trips = 0;
+    [...fileyDays].sort().forEach((d, i, arr) => {
+      const prev = arr[i-1];
+      if (!prev || (new Date(d) - new Date(prev)) / 86400000 > 1) trips++;
+    });
+
+    const salahDays = Object.keys(entries).filter(d => entries[d]?.salah).sort();
+    let salahTrips = 0;
+    salahDays.forEach((d, i) => {
+      const prev = salahDays[i-1];
+      if (!prev || (new Date(d) - new Date(prev)) / 86400000 > 1) salahTrips++;
+    });
+
+    const companionCount = {};
+    Object.values(entries).forEach(e => {
+      (e.companions||[]).forEach(c => { companionCount[c] = (companionCount[c]||0) + 1; });
+    });
+
+    document.getElementById('stat-days').textContent = fileyDays.length;
+    document.getElementById('stat-days-sub').textContent = `out of ${allDates.length} days since 27 Mar 2026 · ${pct}%`;
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('stat-trips').textContent = trips;
+    document.getElementById('stat-salah').textContent = salahTrips;
+
+    const people = Object.entries(companionCount).sort((a,b) => b[1]-a[1]);
+    document.getElementById('people-list').innerHTML = people.length
+      ? people.map(([n,c]) => `<div class="person-row"><span class="person-name">👤 ${n}</span><span class="person-count">${c} day${c!==1?'s':''}</span></div>`).join('')
+      : '<p class="no-people">Add people when logging a day 👆</p>';
+  }
 
   // ── MODAL ──
   function setLoading(on) {
     document.getElementById('modal-loading').classList.toggle('hidden', !on);
   }
 
-  function setDateLabel(key) {
-    document.getElementById('modal-date-label').textContent =
-      new Date(`${key}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-  }
-
   function showScrapbook(key) {
     const e = entries[key];
     const photos = e.photo_urls || [];
-    const photoEl = document.getElementById('scrapbook-photos');
-    photoEl.className = 'scrapbook-photos' + (photos.length===1?' one':photos.length===3?' three':'');
-    photoEl.innerHTML = photos.map(p => `<div class="scrapbook-img"><img src="${p}" /></div>`).join('');
-
+    const el = document.getElementById('scrapbook-photos');
+    el.className = 'scrapbook-photos' + (photos.length===1?' one':photos.length===3?' three':'');
+    el.innerHTML = photos.map(p => `<div class="scrapbook-img"><img src="${p}" /></div>`).join('');
     const chips = [];
     if (e.salah) chips.push('🐱 Salah');
     (e.companions||[]).forEach(c => chips.push('👤 '+c));
     document.getElementById('scrapbook-chips').innerHTML = chips.map(c => `<span class="scrapbook-chip">${c}</span>`).join('');
     document.getElementById('scrapbook-notes').textContent = e.notes || '';
-
     document.getElementById('scrapbook-view').classList.remove('hidden');
     document.getElementById('scrapbook-footer').classList.remove('hidden');
     document.getElementById('edit-view').classList.add('hidden');
@@ -233,8 +196,8 @@ async function initApp() {
 
   function showEditForm(key) {
     const e = entries[key] || {};
-    pendingPhotos = (e.photo_urls || []).map(url => ({ url, isNew: false }));
-    pendingCompanions = [...(e.companions || [])];
+    pendingPhotos = (e.photo_urls||[]).map(url => ({ url, isNew: false }));
+    pendingCompanions = [...(e.companions||[])];
     document.getElementById('notes-input').value = e.notes || '';
     document.getElementById('salah-toggle').checked = !!e.salah;
     renderCompanionTags();
@@ -247,12 +210,9 @@ async function initApp() {
 
   function openDay(key) {
     activeDate = key;
-    setDateLabel(key);
-    if (hasContent(entries[key])) {
-      showScrapbook(key);
-    } else {
-      showEditForm(key);
-    }
+    document.getElementById('modal-date-label').textContent =
+      new Date(`${key}T12:00:00`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    hasContent(entries[key]) ? showScrapbook(key) : showEditForm(key);
     document.getElementById('modal').classList.remove('hidden');
   }
 
@@ -268,26 +228,23 @@ async function initApp() {
   document.getElementById('remove-btn').addEventListener('click', async () => {
     if (!activeDate) return;
     setLoading(true);
-    // delete photos from storage
     const e = entries[activeDate];
-    if (e && e.photo_urls && e.photo_urls.length) {
-      const paths = e.photo_urls.map(url => url.split('/photos/')[1]);
-      await db.storage.from('photos').remove(paths);
+    if (e?.photo_urls?.length) {
+      const paths = e.photo_urls.map(url => url.split('/photos/')[1]).filter(Boolean);
+      if (paths.length) await db.storage.from('photos').remove(paths);
     }
     await db.from('diary_entries').delete().eq('date', activeDate);
     delete entries[activeDate];
     setLoading(false);
-    renderCalendar();
-    renderHome();
-    closeModal();
+    renderCalendar(); renderHome(); closeModal();
   });
 
   // Companions
   function renderCompanionTags() {
     document.getElementById('companion-tags').innerHTML = pendingCompanions.map((c,i) => `
-      <span class="companion-tag">${c}<button onclick="window._removeCompanion(${i})">✕</button></span>`).join('');
+      <span class="companion-tag">${c}<button onclick="window._rc(${i})">✕</button></span>`).join('');
   }
-  window._removeCompanion = i => { pendingCompanions.splice(i,1); renderCompanionTags(); };
+  window._rc = i => { pendingCompanions.splice(i,1); renderCompanionTags(); };
 
   document.getElementById('companion-add').addEventListener('click', addCompanion);
   document.getElementById('companion-input').addEventListener('keydown', e => { if (e.key==='Enter') { e.preventDefault(); addCompanion(); }});
@@ -300,64 +257,55 @@ async function initApp() {
 
   // Photos
   document.getElementById('photo-input').addEventListener('change', async function () {
-    const files = Array.from(this.files);
-    for (const file of files) {
+    for (const file of Array.from(this.files)) {
       const blob = await compressImage(file);
-      const url = URL.createObjectURL(blob);
-      pendingPhotos.push({ url, isNew: true, blob });
+      pendingPhotos.push({ url: URL.createObjectURL(blob), isNew: true, blob });
       renderPhotoGrid();
     }
     this.value = '';
   });
-
   function renderPhotoGrid() {
     document.getElementById('photo-grid').innerHTML = pendingPhotos.map((p,i) => `
-      <div class="photo-thumb">
-        <img src="${p.url}" />
-        <button class="del" onclick="window._removePhoto(${i})">✕</button>
-      </div>`).join('');
+      <div class="photo-thumb"><img src="${p.url}" /><button class="del" onclick="window._rp(${i})">✕</button></div>`).join('');
   }
-  window._removePhoto = i => { pendingPhotos.splice(i,1); renderPhotoGrid(); };
+  window._rp = i => { pendingPhotos.splice(i,1); renderPhotoGrid(); };
 
   // Save
   document.getElementById('save-btn').addEventListener('click', async () => {
     if (!activeDate) return;
     setLoading(true);
-
     const notes = document.getElementById('notes-input').value.trim();
     const salah = document.getElementById('salah-toggle').checked;
-
-    // Upload new photos to Supabase Storage
     const photoUrls = [];
     for (const p of pendingPhotos) {
-      if (!p.isNew) {
-        photoUrls.push(p.url);
-      } else {
-        const filename = `${activeDate}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
-        const { error } = await db.storage.from('photos').upload(filename, p.blob, { contentType: 'image/jpeg' });
-        if (!error) {
-          const { data } = db.storage.from('photos').getPublicUrl(filename);
-          photoUrls.push(data.publicUrl);
-        }
-      }
+      if (!p.isNew) { photoUrls.push(p.url); continue; }
+      const filename = `${activeDate}/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+      const { error } = await db.storage.from('photos').upload(filename, p.blob, { contentType: 'image/jpeg' });
+      if (!error) photoUrls.push(db.storage.from('photos').getPublicUrl(filename).data.publicUrl);
     }
-
     const row = { date: activeDate, notes, salah, companions: pendingCompanions, photo_urls: photoUrls };
-
     if (notes || photoUrls.length || salah || pendingCompanions.length) {
       await db.from('diary_entries').upsert(row, { onConflict: 'date' });
       entries[activeDate] = row;
       setLoading(false);
-      renderCalendar();
-      renderHome();
-      showScrapbook(activeDate);
+      renderCalendar(); renderHome(); showScrapbook(activeDate);
     } else {
       await db.from('diary_entries').delete().eq('date', activeDate);
       delete entries[activeDate];
       setLoading(false);
-      renderCalendar();
-      renderHome();
-      closeModal();
+      renderCalendar(); renderHome(); closeModal();
     }
+  });
+
+  // ── LOAD DATA then re-render ──
+  renderCalendar();
+  renderHome();
+
+  db.from('diary_entries').select('*').then(({ data, error }) => {
+    if (error) { console.error('Supabase error:', error); return; }
+    entries = {};
+    (data||[]).forEach(row => { entries[row.date] = row; });
+    renderCalendar();
+    renderHome();
   });
 }
