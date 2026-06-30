@@ -135,10 +135,22 @@ function renderCalendar() {
     const e = entries[key];
     const hasEntry = e && (e.notes || (e.photos && e.photos.length) || e.salah || (e.companions && e.companions.length));
     const salah = e && e.salah;
-    html += `<div class="day${key === today ? ' today' : ''}${hasEntry ? ' has-entry' : ''}" data-key="${key}">
-      <span class="day-num">${d}</span>
-      ${hasEntry ? `<span class="day-emoji">${salah ? '🐱' : '🏖️'}</span>` : ''}
-    </div>`;
+    const thumb = e && e.photos && e.photos[0];
+    if (hasEntry) {
+      html += `<div class="day has-entry${key === today ? ' today' : ''}" data-key="${key}">
+        ${thumb ? `<img class="day-bg" src="${thumb}" />` : `<div class="day-bg" style="background:rgba(245,222,170,0.88)"></div>`}
+        <div class="day-inner">
+          <span class="day-emoji">${salah ? '🐱' : '🏖️'}</span>
+          <span class="day-num">${d}</span>
+        </div>
+      </div>`;
+    } else {
+      html += `<div class="day${key === today ? ' today' : ''}" data-key="${key}">
+        <div class="day-inner">
+          <span class="day-num">${d}</span>
+        </div>
+      </div>`;
+    }
   }
   cal.innerHTML = html;
   cal.querySelectorAll('.day:not(.empty)').forEach(el => {
@@ -156,20 +168,61 @@ document.getElementById('next-btn').addEventListener('click', () => {
 });
 
 // MODAL
-function openDay(key) {
-  activeDate = key;
+function setDateLabel(key) {
+  document.getElementById('modal-date-label').textContent =
+    new Date(`${key}T12:00:00`).toLocaleDateString('en-GB', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
+}
+
+function showScrapbook(key) {
+  const e = entries[key];
+  // photos
+  const photos = e.photos || [];
+  const photoEl = document.getElementById('scrapbook-photos');
+  photoEl.className = 'scrapbook-photos' + (photos.length === 1 ? ' one' : photos.length === 3 ? ' three' : '');
+  photoEl.innerHTML = photos.map(p => `<div class="scrapbook-img"><img src="${p}" /></div>`).join('');
+
+  // chips
+  const chips = [];
+  if (e.salah) chips.push('🐱 Salah');
+  (e.companions || []).forEach(c => chips.push('👤 ' + c));
+  document.getElementById('scrapbook-chips').innerHTML = chips.map(c => `<span class="scrapbook-chip">${c}</span>`).join('');
+
+  // notes
+  document.getElementById('scrapbook-notes').textContent = e.notes || '';
+
+  document.getElementById('scrapbook-view').classList.remove('hidden');
+  document.getElementById('scrapbook-footer').classList.remove('hidden');
+  document.getElementById('edit-view').classList.add('hidden');
+  document.getElementById('edit-footer').classList.add('hidden');
+}
+
+function showEditForm(key) {
   const e = entries[key] || {};
   pendingPhotos = (e.photos || []).map(p => ({ dataUrl: p }));
   pendingCompanions = [...(e.companions || [])];
-
-  const label = new Date(`${key}T12:00:00`).toLocaleDateString('en-GB', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-  });
-  document.getElementById('modal-date-label').textContent = label;
   document.getElementById('notes-input').value = e.notes || '';
   document.getElementById('salah-toggle').checked = !!e.salah;
   renderCompanionTags();
   renderPhotoGrid();
+
+  document.getElementById('edit-view').classList.remove('hidden');
+  document.getElementById('edit-footer').classList.remove('hidden');
+  document.getElementById('scrapbook-view').classList.add('hidden');
+  document.getElementById('scrapbook-footer').classList.add('hidden');
+}
+
+function openDay(key) {
+  activeDate = key;
+  setDateLabel(key);
+  const e = entries[key];
+  const hasEntry = e && (e.notes || (e.photos && e.photos.length) || e.salah || (e.companions && e.companions.length));
+  if (hasEntry) {
+    showScrapbook(key);
+  } else {
+    showEditForm(key);
+  }
   document.getElementById('modal').classList.remove('hidden');
 }
 
@@ -180,6 +233,14 @@ function closeModal() {
 
 document.getElementById('modal-close').addEventListener('click', closeModal);
 document.querySelector('.backdrop').addEventListener('click', closeModal);
+document.getElementById('edit-btn').addEventListener('click', () => showEditForm(activeDate));
+document.getElementById('remove-btn').addEventListener('click', () => {
+  if (!activeDate) return;
+  delete entries[activeDate];
+  save(entries);
+  renderCalendar();
+  closeModal();
+});
 
 // companions
 function renderCompanionTags() {
@@ -224,12 +285,15 @@ document.getElementById('save-btn').addEventListener('click', () => {
   const salah = document.getElementById('salah-toggle').checked;
   if (notes || pendingPhotos.length || salah || pendingCompanions.length) {
     entries[activeDate] = { notes, photos: pendingPhotos.map(p => p.dataUrl), salah, companions: [...pendingCompanions] };
+    save(entries);
+    renderCalendar();
+    showScrapbook(activeDate);
   } else {
     delete entries[activeDate];
+    save(entries);
+    renderCalendar();
+    closeModal();
   }
-  save(entries);
-  renderCalendar();
-  closeModal();
 });
 
 // INIT

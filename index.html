@@ -88,9 +88,20 @@
         <h2 id="modal-date-label"></h2>
         <button id="modal-close">✕</button>
       </div>
-      <div class="sheet-body">
 
-        <!-- Salah toggle -->
+      <!-- SCRAPBOOK VIEW -->
+      <div id="scrapbook-view" class="sheet-body hidden">
+        <div id="scrapbook-photos" class="scrapbook-photos"></div>
+        <div id="scrapbook-chips" class="scrapbook-chips"></div>
+        <p id="scrapbook-notes" class="scrapbook-notes"></p>
+      </div>
+      <div id="scrapbook-footer" class="sheet-footer two-btn hidden">
+        <button id="edit-btn" class="btn-outline">✏️ Edit</button>
+        <button id="remove-btn" class="btn-danger">🗑 Remove</button>
+      </div>
+
+      <!-- EDIT VIEW -->
+      <div id="edit-view" class="sheet-body hidden">
         <div class="modal-row">
           <span class="modal-row-label">🐱 Salah came</span>
           <label class="toggle-wrap">
@@ -98,30 +109,25 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
-
-        <!-- Companions -->
         <div class="section-label">Who came?</div>
         <div id="companion-tags" class="companion-tags"></div>
         <div class="companion-row">
           <input type="text" id="companion-input" placeholder="Add a person…" />
           <button id="companion-add">Add</button>
         </div>
-
-        <!-- Photos -->
         <div class="section-label">Photos</div>
         <div id="photo-grid" class="photo-grid"></div>
         <label class="add-photo-btn">
           <span>＋ Add photos</span>
           <input type="file" id="photo-input" accept="image/*" multiple />
         </label>
-
-        <!-- Notes -->
         <div class="section-label">Notes</div>
         <textarea id="notes-input" placeholder="Write about your day at Filey…"></textarea>
       </div>
-      <div class="sheet-footer">
+      <div id="edit-footer" class="sheet-footer hidden">
         <button id="save-btn">Save</button>
       </div>
+
     </div>
   </div>
 
