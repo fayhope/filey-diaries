@@ -360,24 +360,55 @@ textarea:focus { border-color: var(--sky); background: white; }
 }
 @media (orientation: landscape) {
   .rotate-prompt { display: none; }
+
+  /* hide nav, expand scrapbook to full screen */
   body.scrapbook-active .bottom-nav { display: none; }
   body.scrapbook-active #view-scrapbook { bottom: 0; }
   body.scrapbook-active .book-indicator { bottom: calc(var(--safe-bottom) + 10px); }
 
-  /* shrink paddings so everything fits in the short landscape height */
-  .book-cover { padding: 12px 28px; gap: 6px; }
-  .cover-wave { font-size: 2.2rem; }
-  .cover-title { font-size: 1.3rem; }
-  .cover-sub { font-size: 0.75rem; }
-  .cover-hint { margin-top: 10px; }
-  .book-month-header { padding: calc(var(--safe-top) + 8px) 20px 10px; font-size: 1.1rem; }
-  .sb-mini-cal { padding: 8px 10px; gap: 4px; }
-  .sb-cal-day { font-size: 0.72rem; }
-  .sb-page-left { padding: calc(var(--safe-top) + 6px) 8px 8px 10px; gap: 6px; }
-  .sb-page-right { padding: calc(var(--safe-top) + 8px) 12px 8px 10px; gap: 6px; }
-  .sb-day-title { font-size: 0.62rem; padding-bottom: 4px; }
-  .sb-text { font-size: 11px; line-height: 20px; background-size: 100% 20px;
-    background-image: repeating-linear-gradient(transparent 0px, transparent 19px, #ddd6c8 19px, #ddd6c8 20px); }
+  /* ── DOUBLE-PAGE BOOK LAYOUT ── */
+  /* each page takes half the screen width; snap aligns to odd (left) pages */
+  body.scrapbook-active .book-pages { width: 100%; margin: 0; }
+  body.scrapbook-active .book-page { width: 50vw; scroll-snap-align: none; }
+  body.scrapbook-active .book-page:nth-child(odd) { scroll-snap-align: start; }
+
+  /* add a spine shadow between the two visible pages */
+  body.scrapbook-active .book-page:nth-child(even) {
+    box-shadow: inset 4px 0 12px rgba(0,0,0,0.18);
+  }
+
+  /* cover: stays centred as the left page, right page is the first month */
+  body.scrapbook-active .book-cover { padding: 16px 20px; gap: 8px; }
+  .cover-wave { font-size: 2rem; }
+  .cover-title { font-size: 1.2rem; }
+  .cover-sub { font-size: 0.72rem; }
+  .cover-hint { margin-top: 8px; font-size: 0.68rem; }
+
+  /* month page */
+  .book-month-header { padding: 12px 16px 10px; font-size: 1rem; letter-spacing: 1px; }
+  .sb-mini-cal { padding: 8px; gap: 3px; }
+  .sb-cal-name { font-size: 0.55rem; padding: 2px 0 4px; }
+  .sb-cal-day { font-size: 0.68rem; border-radius: 6px; }
+
+  /* day spread: stack photos top / notes bottom within the 50vw page */
+  body.scrapbook-active .book-spread { flex-direction: column !important; }
+  body.scrapbook-active .sb-page-left {
+    width: 100%; height: 52%;
+    border-right: none; border-bottom: 2px solid #d8cfc0;
+    padding: 8px 10px 6px;
+    flex-shrink: 0;
+  }
+  body.scrapbook-active .sb-page-right {
+    height: 48%; padding: 6px 10px 8px; gap: 4px;
+  }
+  body.scrapbook-active .sb-photos { flex-direction: row; gap: 6px; }
+  body.scrapbook-active .sb-day-title { font-size: 0.6rem; padding-bottom: 3px; }
+  body.scrapbook-active .sb-text {
+    font-size: 10px; line-height: 18px;
+    background-size: 100% 18px;
+    background-image: repeating-linear-gradient(transparent 0px, transparent 17px, #ddd6c8 17px, #ddd6c8 18px);
+  }
+  body.scrapbook-active .sb-chip { font-size: 0.62rem; padding: 2px 6px; }
 }
 .book-cover {
   background: linear-gradient(160deg, #08192d 0%, #0e4a6e 50%, #1a6b9a 100%);
