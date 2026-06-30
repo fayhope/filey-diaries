@@ -484,6 +484,33 @@ textarea:focus { border-color: var(--sky); background: white; }
   flex: 1; display: flex; align-items: center;
   justify-content: center; font-size: 3rem; opacity: 0.2;
 }
+/* rotate prompt */
+.rotate-prompt {
+  position: absolute;
+  top: calc(var(--safe-top) + 10px);
+  left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.5);
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 20px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 20;
+  display: flex; align-items: center; gap: 6px;
+}
+@media (orientation: landscape) {
+  .rotate-prompt { display: none; }
+  body.scrapbook-active .bottom-nav { display: none; }
+  body.scrapbook-active #view-scrapbook {
+    bottom: 0;
+  }
+  body.scrapbook-active .book-indicator {
+    bottom: calc(var(--safe-bottom) + 10px);
+  }
+}
+
 .book-indicator {
   position: absolute;
   bottom: calc(var(--nav-h) + var(--safe-bottom) + 10px);
