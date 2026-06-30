@@ -1,14 +1,28 @@
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 
-const KEY = 'filey_entries';
+// ── MAP (background only, no interaction) ──
+const map = L.map('map', {
+  center: [54.2093, -0.2863],
+  zoom: 14,
+  zoomControl: false,
+  dragging: false,
+  scrollWheelZoom: false,
+  doubleClickZoom: false,
+  touchZoom: false,
+  keyboard: false,
+  attributionControl: false,
+});
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
+// ── STORAGE ──
+const KEY = 'filey_entries';
 function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
 function save(data) { localStorage.setItem(KEY, JSON.stringify(data)); }
 
-let entries = load(); // { "2024-07-20": { notes, photos: [dataUrl] } }
+let entries = load();
 let year, month;
 let activeDate = null;
-let pendingPhotos = []; // { dataUrl }
+let pendingPhotos = [];
 
 const now = new Date();
 year = now.getFullYear();
@@ -24,7 +38,7 @@ function renderCalendar() {
     new Date(year, month, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
   const cal = document.getElementById('calendar');
-  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // Mon=0
+  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7;
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const today = todayKey();
 
@@ -62,7 +76,6 @@ function openDay(key) {
   const entry = entries[key] || {};
   pendingPhotos = (entry.photos || []).map(p => ({ dataUrl: p }));
 
-  const [y, m, d] = key.split('-');
   const label = new Date(`${key}T12:00:00`).toLocaleDateString('en-GB', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
   });
@@ -81,7 +94,6 @@ function closeModal() {
 document.getElementById('modal-close').addEventListener('click', closeModal);
 document.querySelector('.backdrop').addEventListener('click', closeModal);
 
-// photos
 document.getElementById('photo-input').addEventListener('change', function () {
   Array.from(this.files).forEach(file => {
     const reader = new FileReader();
@@ -104,7 +116,6 @@ window.removePhoto = function(i) {
   renderPhotoGrid();
 };
 
-// save
 document.getElementById('save-btn').addEventListener('click', () => {
   if (!activeDate) return;
   const notes = document.getElementById('notes-input').value.trim();

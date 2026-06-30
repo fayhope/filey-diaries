@@ -10,26 +10,31 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <title>Filey Diaries</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="app.css" />
 </head>
 <body>
 
-  <header>
-    <div class="header-inner">
+  <!-- Map sits behind everything -->
+  <div id="map"></div>
+  <!-- Frosted overlay so calendar reads cleanly -->
+  <div class="map-overlay"></div>
+
+  <!-- Calendar card -->
+  <div class="card">
+    <div class="card-header">
       <button id="prev-btn">‹</button>
-      <div class="header-title">
-        <h1>Filey Diaries</h1>
+      <div class="card-title">
+        <div class="title-text">🌊 Filey Diaries</div>
         <span id="month-label"></span>
       </div>
       <button id="next-btn">›</button>
     </div>
-  </header>
-
-  <div class="day-names">
-    <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+    <div class="day-names">
+      <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+    </div>
+    <div id="calendar" class="calendar"></div>
   </div>
-
-  <div id="calendar" class="calendar"></div>
 
   <!-- Day modal -->
   <div id="modal" class="modal hidden">
@@ -54,6 +59,7 @@
     </div>
   </div>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
