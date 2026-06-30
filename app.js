@@ -83,7 +83,7 @@ function startApp() {
     return dates;
   }
 
-  // ── NAV ── (wired up immediately, no async dependency)
+  // ── NAV ──
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -92,6 +92,7 @@ function startApp() {
       document.getElementById('view-' + btn.dataset.view).classList.add('active');
       if (btn.dataset.view === 'home') renderHome();
       if (btn.dataset.view === 'calendar') renderCalendar();
+      if (btn.dataset.view === 'scrapbook') renderScrapbook();
     });
   });
 
@@ -296,6 +297,83 @@ function startApp() {
       renderCalendar(); renderHome(); closeModal();
     }
   });
+
+  // ── SCRAPBOOK PAGE ──
+  function renderScrapbook() {
+    const container = document.getElementById('scrapbook-pages');
+    const days = Object.keys(entries).filter(k => hasContent(entries[k])).sort();
+
+    if (!days.length) {
+      container.innerHTML = '<div class="sb-no-entries">No entries yet.<br>Start logging your days in the Calendar! 🏖️</div>';
+      return;
+    }
+
+    // group by month
+    const byMonth = {};
+    days.forEach(d => {
+      const mon = d.slice(0, 7); // "YYYY-MM"
+      if (!byMonth[mon]) byMonth[mon] = [];
+      byMonth[mon].push(d);
+    });
+
+    const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    let html = '';
+
+    Object.keys(byMonth).sort().forEach(mon => {
+      const [y, m] = mon.split('-').map(Number);
+      const monthName = new Date(y, m-1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+      const daysInMonth = new Date(y, m, 0).getDate();
+      const firstDow = (new Date(y, m-1, 1).getDay() + 6) % 7;
+
+      // mini calendar
+      let calCells = DAYS.map(d => `<div class="sb-cal-name">${d}</div>`).join('');
+      for (let i = 0; i < firstDow; i++) calCells += '<div class="sb-cal-day empty"></div>';
+      for (let d = 1; d <= daysInMonth; d++) {
+        const key = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const e = entries[key];
+        const stamped = hasContent(e);
+        const salah = e && e.salah;
+        calCells += `<div class="sb-cal-day${stamped?' stamped':''}${salah?' salah':''}">${d}</div>`;
+      }
+
+      html += `<div class="sb-month-page">
+        <div class="sb-month-title">${monthName}</div>
+        <div class="sb-mini-cal">${calCells}</div>
+      </div>`;
+
+      // day spreads
+      byMonth[mon].forEach(key => {
+        const e = entries[key];
+        const photos = e.photo_urls || [];
+        const chips = [];
+        if (e.salah) chips.push('🐱 Salah');
+        (e.companions||[]).forEach(c => chips.push('👤 '+c));
+
+        const dateLabel = new Date(`${key}T12:00:00`).toLocaleDateString('en-GB', {
+          weekday: 'long', day: 'numeric', month: 'long'
+        });
+
+        const photoHtml = photos.map(p =>
+          `<div class="sb-photo"><img src="${p}" loading="lazy" /></div>`
+        ).join('');
+
+        const chipsHtml = chips.map(c => `<span class="sb-chip">${c}</span>`).join('');
+
+        html += `<div class="sb-spread">
+          <div class="sb-page-left">
+            <div class="sb-photos">${photoHtml || '<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:2.5rem;opacity:0.3">🏖️</div>'}</div>
+          </div>
+          <div class="sb-page-right">
+            <div class="sb-day-title">${dateLabel}</div>
+            ${chips.length ? `<div class="sb-chips">${chipsHtml}</div>` : ''}
+            <p class="sb-text">${e.notes || ''}</p>
+          </div>
+        </div>`;
+      });
+    });
+
+    container.innerHTML = html;
+  }
 
   // ── TRIP MODAL ──
   let tripCompanions = [];
