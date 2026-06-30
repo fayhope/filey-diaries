@@ -360,6 +360,21 @@ textarea:focus { border-color: var(--sky); background: white; }
   body.scrapbook-active .bottom-nav { display: none; }
   body.scrapbook-active #view-scrapbook { bottom: 0; }
   body.scrapbook-active .book-indicator { bottom: calc(var(--safe-bottom) + 10px); }
+
+  /* shrink paddings so everything fits in the short landscape height */
+  .book-cover { padding: 12px 28px; gap: 6px; }
+  .cover-wave { font-size: 2.2rem; }
+  .cover-title { font-size: 1.3rem; }
+  .cover-sub { font-size: 0.75rem; }
+  .cover-hint { margin-top: 10px; }
+  .book-month-header { padding: calc(var(--safe-top) + 8px) 20px 10px; font-size: 1.1rem; }
+  .sb-mini-cal { padding: 8px 10px; gap: 4px; }
+  .sb-cal-day { font-size: 0.72rem; }
+  .sb-page-left { padding: calc(var(--safe-top) + 6px) 8px 8px 10px; gap: 6px; }
+  .sb-page-right { padding: calc(var(--safe-top) + 8px) 12px 8px 10px; gap: 6px; }
+  .sb-day-title { font-size: 0.62rem; padding-bottom: 4px; }
+  .sb-text { font-size: 11px; line-height: 20px; background-size: 100% 20px;
+    background-image: repeating-linear-gradient(transparent 0px, transparent 19px, #ddd6c8 19px, #ddd6c8 20px); }
 }
 .book-cover {
   background: linear-gradient(160deg, #08192d 0%, #0e4a6e 50%, #1a6b9a 100%);
