@@ -22,7 +22,7 @@ const now = new Date();
 calYear = now.getFullYear(); calMonth = now.getMonth();
 
 // STATS — start date: 6th July 2024
-const START_DATE = new Date('2026-07-06');
+const START_DATE = new Date('2026-03-27');
 
 function pad(n) { return String(n).padStart(2, '0'); }
 function toKey(y, m, d) { return `${y}-${pad(m+1)}-${pad(d)}`; }
@@ -86,7 +86,7 @@ function renderHome() {
   const { totalDays, fileyCount, pct, trips, salahTrips, companionCount } = computeStats();
 
   document.getElementById('stat-days').textContent = fileyCount;
-  document.getElementById('stat-days-sub').textContent = `out of ${totalDays} days since 6 Jul 2026 · ${pct}%`;
+  document.getElementById('stat-days-sub').textContent = `out of ${totalDays} days since 27 Mar 2026 · ${pct}%`;
   document.getElementById('progress-fill').style.width = pct + '%';
   document.getElementById('stat-trips').textContent = trips;
   document.getElementById('stat-salah').textContent = salahTrips;
