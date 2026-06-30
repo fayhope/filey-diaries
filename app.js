@@ -353,8 +353,13 @@ function startApp() {
           weekday: 'long', day: 'numeric', month: 'long'
         });
 
-        const photoHtml = photos.map(p =>
-          `<div class="sb-photo"><img src="${p}" loading="lazy" /></div>`
+        const shown = photos.slice(0, 3);
+        const extra = photos.length - shown.length;
+        const photoHtml = shown.map((p, i) =>
+          `<div class="sb-photo ${shown.length === 2 && i === 0 ? 'sb-photo-half' : shown.length === 2 && i === 1 ? 'sb-photo-half' : ''}">
+            <img src="${p}" loading="lazy" />
+            ${i === shown.length - 1 && extra > 0 ? `<div class="sb-photo-more">+${extra}</div>` : ''}
+          </div>`
         ).join('');
 
         const chipsHtml = chips.map(c => `<span class="sb-chip">${c}</span>`).join('');
