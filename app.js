@@ -90,7 +90,8 @@ function startApp() {
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
       btn.classList.add('active');
       document.getElementById('view-' + btn.dataset.view).classList.add('active');
-if (btn.dataset.view === 'home') renderHome();
+document.body.classList.toggle('scrapbook-active', btn.dataset.view === 'scrapbook');
+      if (btn.dataset.view === 'home') renderHome();
       if (btn.dataset.view === 'calendar') renderCalendar();
       if (btn.dataset.view === 'scrapbook') renderScrapbook();
     });

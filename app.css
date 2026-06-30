@@ -316,15 +316,13 @@ textarea:focus { border-color: var(--sky); background: white; }
 #view-scrapbook {
   overflow: hidden;
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 .book-pages {
   display: flex;
   flex-direction: row;
   width: min(100%, 480px);
   height: 100%;
+  margin: 0 auto;
   overflow-x: scroll;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
@@ -340,6 +338,28 @@ textarea:focus { border-color: var(--sky); background: white; }
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* ── LANDSCAPE BOOK MODE ── */
+.rotate-prompt {
+  position: absolute;
+  bottom: calc(var(--nav-h) + var(--safe-bottom) + 12px);
+  left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.45);
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 5px 14px;
+  border-radius: 20px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 20;
+}
+@media (orientation: landscape) {
+  .rotate-prompt { display: none; }
+  body.scrapbook-active .bottom-nav { display: none; }
+  body.scrapbook-active #view-scrapbook { bottom: 0; }
+  body.scrapbook-active .book-indicator { bottom: calc(var(--safe-bottom) + 10px); }
 }
 .book-cover {
   background: linear-gradient(160deg, #08192d 0%, #0e4a6e 50%, #1a6b9a 100%);
