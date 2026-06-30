@@ -1,358 +1,121 @@
-// ── SERVICE WORKER ──
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js');
-}
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 
-// ── STORAGE ──
-const TRIPS_KEY = 'filey_trips';
+const KEY = 'filey_entries';
 
-function loadTrips() {
-  try { return JSON.parse(localStorage.getItem(TRIPS_KEY)) || []; }
-  catch { return []; }
-}
+function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
+function save(data) { localStorage.setItem(KEY, JSON.stringify(data)); }
 
-function saveTrips(trips) {
-  localStorage.setItem(TRIPS_KEY, JSON.stringify(trips));
-}
+let entries = load(); // { "2024-07-20": { notes, photos: [dataUrl] } }
+let year, month;
+let activeDate = null;
+let pendingPhotos = []; // { dataUrl }
 
-function genId() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2);
-}
+const now = new Date();
+year = now.getFullYear();
+month = now.getMonth();
 
-// ── STATE ──
-let trips = loadTrips();
-let editingId = null;
-let companions = [];
-let photos = []; // { dataUrl, name }
-let salahMarker = null;
-let calYear, calMonth;
+// ── CALENDAR ──
+function pad(n) { return String(n).padStart(2, '0'); }
+function toKey(y, m, d) { return `${y}-${pad(m+1)}-${pad(d)}`; }
+function todayKey() { return toKey(now.getFullYear(), now.getMonth(), now.getDate()); }
 
-// ── NAV ──
-const navBtns = document.querySelectorAll('.nav-btn');
-const views = document.querySelectorAll('.view');
+function renderCalendar() {
+  document.getElementById('month-label').textContent =
+    new Date(year, month, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
-navBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    navBtns.forEach(b => b.classList.remove('active'));
-    views.forEach(v => v.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('view-' + btn.dataset.view).classList.add('active');
-    if (btn.dataset.view === 'diary') renderDiary();
-    if (btn.dataset.view === 'calendar') renderCalendar();
-    if (btn.dataset.view === 'map') setTimeout(() => map.invalidateSize(), 50);
-  });
-});
+  const cal = document.getElementById('calendar');
+  const firstDow = (new Date(year, month, 1).getDay() + 6) % 7; // Mon=0
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const today = todayKey();
 
-// ── MAP ──
-const FILEY = [54.2093, -0.2863];
-
-const map = L.map('map', {
-  center: FILEY,
-  zoom: 14,
-  zoomControl: false,
-});
-
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: '© OpenStreetMap',
-  maxZoom: 19,
-}).addTo(map);
-
-L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-// Filey marker
-L.marker(FILEY, {
-  icon: L.divIcon({
-    className: '',
-    html: '<div style="font-size:2rem;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.4))">🌊</div>',
-    iconAnchor: [16, 16],
-  })
-}).addTo(map).bindPopup('<b>Filey</b><br>Welcome back! 🐚');
-
-// Trip markers
-function renderMapMarkers() {
-  map.eachLayer(layer => {
-    if (layer._fileyTrip) map.removeLayer(layer);
-  });
-  trips.forEach(trip => {
-    if (!trip.lat || !trip.lng) return;
-    const m = L.marker([trip.lat, trip.lng], {
-      icon: L.divIcon({
-        className: '',
-        html: '<div style="font-size:1.6rem">📍</div>',
-        iconAnchor: [12, 24],
-      })
-    }).addTo(map);
-    m._fileyTrip = true;
-    m.bindPopup(`<b>${trip.name}</b><br>${formatDateRange(trip.start, trip.end)}`);
-  });
-}
-
-// Salah cat toggle
-document.getElementById('toggle-salah').addEventListener('change', function () {
-  if (this.checked) {
-    salahMarker = L.marker([54.2110, -0.2840], {
-      icon: L.divIcon({
-        className: '',
-        html: '<div style="font-size:2.2rem;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.5))">🐱</div>',
-        iconAnchor: [18, 18],
-      })
-    }).addTo(map);
-    salahMarker.bindPopup('<b>Salah</b><br>Meow! 🐾').openPopup();
-  } else {
-    if (salahMarker) { map.removeLayer(salahMarker); salahMarker = null; }
+  let html = '';
+  for (let i = 0; i < firstDow; i++) html += '<div class="day empty"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = toKey(year, month, d);
+    const isToday = key === today;
+    const entry = entries[key];
+    const hasEntry = entry && (entry.notes || (entry.photos && entry.photos.length));
+    html += `<div class="day${isToday ? ' today' : ''}${hasEntry ? ' has-entry' : ''}" data-key="${key}">
+      <span class="day-num">${d}</span>
+      ${hasEntry ? '<span class="day-emoji">🏖️</span>' : ''}
+    </div>`;
   }
+  cal.innerHTML = html;
+
+  cal.querySelectorAll('.day:not(.empty)').forEach(el => {
+    el.addEventListener('click', () => openDay(el.dataset.key));
+  });
+}
+
+document.getElementById('prev-btn').addEventListener('click', () => {
+  month--; if (month < 0) { month = 11; year--; }
+  renderCalendar();
 });
-
-// ── DIARY ──
-function formatDateRange(start, end) {
-  if (!start) return '';
-  const s = new Date(start).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  if (!end || end === start) return s;
-  const e = new Date(end).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  return `${s} – ${e}`;
-}
-
-function renderDiary() {
-  const list = document.getElementById('trips-list');
-  if (trips.length === 0) {
-    list.innerHTML = `<div class="empty-state"><span class="big">🏖️</span>No trips yet!<br>Add your first Filey adventure.</div>`;
-    return;
-  }
-  const sorted = [...trips].sort((a, b) => (b.start || '').localeCompare(a.start || ''));
-  list.innerHTML = sorted.map(trip => {
-    const bannerImg = trip.photos && trip.photos[0]
-      ? `<img src="${trip.photos[0]}" alt="" />`
-      : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:3rem">🌊</div>`;
-    const chips = (trip.companions || []).map(c =>
-      `<span class="companion-chip">👤 ${c}</span>`
-    ).join('');
-    return `
-      <div class="trip-card" onclick="openEditTrip('${trip.id}')">
-        <div class="trip-card-banner">${bannerImg}</div>
-        <div class="trip-card-body">
-          <div class="trip-card-title">${trip.name || 'Untitled Trip'}</div>
-          <div class="trip-card-dates">${formatDateRange(trip.start, trip.end)}</div>
-          <div class="trip-card-companions">${chips}</div>
-        </div>
-      </div>`;
-  }).join('');
-  renderMapMarkers();
-}
-
-document.getElementById('new-trip-btn').addEventListener('click', () => openNewTrip());
+document.getElementById('next-btn').addEventListener('click', () => {
+  month++; if (month > 11) { month = 0; year++; }
+  renderCalendar();
+});
 
 // ── MODAL ──
-function openNewTrip() {
-  editingId = null;
-  companions = [];
-  photos = [];
-  document.getElementById('modal-title').textContent = 'New Trip';
-  document.getElementById('trip-name').value = '';
-  document.getElementById('trip-start').value = '';
-  document.getElementById('trip-end').value = '';
-  document.getElementById('trip-notes').value = '';
-  document.getElementById('delete-trip').classList.add('hidden');
-  renderCompanionTags();
-  renderPhotoPreviews();
-  document.getElementById('trip-modal').classList.remove('hidden');
-}
+function openDay(key) {
+  activeDate = key;
+  const entry = entries[key] || {};
+  pendingPhotos = (entry.photos || []).map(p => ({ dataUrl: p }));
 
-function openEditTrip(id) {
-  const trip = trips.find(t => t.id === id);
-  if (!trip) return;
-  editingId = id;
-  companions = [...(trip.companions || [])];
-  photos = (trip.photos || []).map(p => ({ dataUrl: p }));
-  document.getElementById('modal-title').textContent = 'Edit Trip';
-  document.getElementById('trip-name').value = trip.name || '';
-  document.getElementById('trip-start').value = trip.start || '';
-  document.getElementById('trip-end').value = trip.end || '';
-  document.getElementById('trip-notes').value = trip.notes || '';
-  document.getElementById('delete-trip').classList.remove('hidden');
-  renderCompanionTags();
-  renderPhotoPreviews();
-  document.getElementById('trip-modal').classList.remove('hidden');
+  const [y, m, d] = key.split('-');
+  const label = new Date(`${key}T12:00:00`).toLocaleDateString('en-GB', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  });
+  document.getElementById('modal-date-label').textContent = label;
+  document.getElementById('notes-input').value = entry.notes || '';
+  renderPhotoGrid();
+  document.getElementById('modal').classList.remove('hidden');
 }
 
 function closeModal() {
-  document.getElementById('trip-modal').classList.add('hidden');
+  document.getElementById('modal').classList.add('hidden');
+  activeDate = null;
+  pendingPhotos = [];
 }
 
 document.getElementById('modal-close').addEventListener('click', closeModal);
-document.querySelector('#trip-modal .modal-backdrop').addEventListener('click', closeModal);
+document.querySelector('.backdrop').addEventListener('click', closeModal);
 
-// Companions
-function renderCompanionTags() {
-  const wrap = document.getElementById('companion-tags');
-  wrap.innerHTML = companions.map((c, i) => `
-    <span class="companion-tag">${c}
-      <button onclick="removeCompanion(${i})">✕</button>
-    </span>`
-  ).join('');
-}
-
-window.removeCompanion = function(i) {
-  companions.splice(i, 1);
-  renderCompanionTags();
-};
-
-document.getElementById('companion-add').addEventListener('click', addCompanion);
-document.getElementById('companion-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') { e.preventDefault(); addCompanion(); }
-});
-
-function addCompanion() {
-  const input = document.getElementById('companion-input');
-  const val = input.value.trim();
-  if (val && !companions.includes(val)) {
-    companions.push(val);
-    renderCompanionTags();
-  }
-  input.value = '';
-}
-
-// Photos
+// photos
 document.getElementById('photo-input').addEventListener('change', function () {
-  const files = Array.from(this.files);
-  files.forEach(file => {
+  Array.from(this.files).forEach(file => {
     const reader = new FileReader();
-    reader.onload = e => {
-      photos.push({ dataUrl: e.target.result, name: file.name });
-      renderPhotoPreviews();
-    };
+    reader.onload = e => { pendingPhotos.push({ dataUrl: e.target.result }); renderPhotoGrid(); };
     reader.readAsDataURL(file);
   });
   this.value = '';
 });
 
-function renderPhotoPreviews() {
-  const wrap = document.getElementById('photo-previews');
-  wrap.innerHTML = photos.map((p, i) => `
+function renderPhotoGrid() {
+  document.getElementById('photo-grid').innerHTML = pendingPhotos.map((p, i) => `
     <div class="photo-thumb">
-      <img src="${p.dataUrl}" alt="" />
-      <button class="remove-photo" onclick="removePhoto(${i})">✕</button>
-    </div>`
-  ).join('');
+      <img src="${p.dataUrl}" />
+      <button class="del" onclick="removePhoto(${i})">✕</button>
+    </div>`).join('');
 }
 
 window.removePhoto = function(i) {
-  photos.splice(i, 1);
-  renderPhotoPreviews();
+  pendingPhotos.splice(i, 1);
+  renderPhotoGrid();
 };
 
-// Save
-document.getElementById('save-trip').addEventListener('click', () => {
-  const name = document.getElementById('trip-name').value.trim() || 'Untitled Trip';
-  const start = document.getElementById('trip-start').value;
-  const end = document.getElementById('trip-end').value;
-  const notes = document.getElementById('trip-notes').value.trim();
-
-  if (editingId) {
-    const trip = trips.find(t => t.id === editingId);
-    Object.assign(trip, { name, start, end, notes, companions: [...companions], photos: photos.map(p => p.dataUrl) });
+// save
+document.getElementById('save-btn').addEventListener('click', () => {
+  if (!activeDate) return;
+  const notes = document.getElementById('notes-input').value.trim();
+  if (notes || pendingPhotos.length) {
+    entries[activeDate] = { notes, photos: pendingPhotos.map(p => p.dataUrl) };
   } else {
-    trips.push({ id: genId(), name, start, end, notes, companions: [...companions], photos: photos.map(p => p.dataUrl) });
+    delete entries[activeDate];
   }
-  saveTrips(trips);
-  closeModal();
-  renderDiary();
-});
-
-// Delete
-document.getElementById('delete-trip').addEventListener('click', () => {
-  if (!editingId) return;
-  if (!confirm('Delete this trip?')) return;
-  trips = trips.filter(t => t.id !== editingId);
-  saveTrips(trips);
-  closeModal();
-  renderDiary();
-});
-
-// ── CALENDAR ──
-const now = new Date();
-calYear = now.getFullYear();
-calMonth = now.getMonth();
-
-function tripsOnDate(dateStr) {
-  return trips.filter(t => {
-    if (!t.start) return false;
-    if (!t.end || t.end === t.start) return t.start === dateStr;
-    return t.start <= dateStr && dateStr <= t.end;
-  });
-}
-
-function renderCalendar() {
-  const label = document.getElementById('cal-month-label');
-  label.textContent = new Date(calYear, calMonth, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-
-  const grid = document.getElementById('calendar-grid');
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  const todayStr = now.toISOString().slice(0, 10);
-
-  const firstDay = new Date(calYear, calMonth, 1);
-  const lastDay = new Date(calYear, calMonth + 1, 0);
-  // Monday-based offset
-  let startOffset = (firstDay.getDay() + 6) % 7;
-
-  let html = days.map(d => `<div class="cal-day-name">${d}</div>`).join('');
-
-  for (let i = 0; i < startOffset; i++) html += '<div class="cal-day empty"></div>';
-
-  for (let d = 1; d <= lastDay.getDate(); d++) {
-    const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    const isToday = dateStr === todayStr;
-    const hasTrip = tripsOnDate(dateStr).length > 0;
-    html += `<div class="cal-day ${isToday ? 'today' : ''} ${hasTrip ? 'has-trip' : ''}" onclick="openDay('${dateStr}')">${d}</div>`;
-  }
-
-  grid.innerHTML = html;
-}
-
-document.getElementById('cal-prev').addEventListener('click', () => {
-  calMonth--;
-  if (calMonth < 0) { calMonth = 11; calYear--; }
+  save(entries);
   renderCalendar();
+  closeModal();
 });
 
-document.getElementById('cal-next').addEventListener('click', () => {
-  calMonth++;
-  if (calMonth > 11) { calMonth = 0; calYear++; }
-  renderCalendar();
-});
-
-window.openDay = function(dateStr) {
-  const dayTrips = tripsOnDate(dateStr);
-  if (dayTrips.length === 0) return;
-
-  const label = new Date(dateStr + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-  document.getElementById('day-modal-title').textContent = label;
-
-  const body = document.getElementById('day-modal-body');
-  body.innerHTML = dayTrips.map(trip => {
-    const photoGrid = (trip.photos || []).length
-      ? `<div class="day-trip-photos">${trip.photos.map(p => `<img src="${p}" />`).join('')}</div>`
-      : '';
-    const chips = (trip.companions || []).map(c => `<span class="companion-chip">👤 ${c}</span>`).join('');
-    const notes = trip.notes ? `<p class="day-trip-notes">${trip.notes}</p>` : '';
-    return `<div class="day-trip-entry">
-      <h3>${trip.name}</h3>
-      ${photoGrid}
-      <div class="trip-card-companions" style="margin-bottom:8px">${chips}</div>
-      ${notes}
-    </div>`;
-  }).join('<hr style="margin:12px 0;border:none;border-top:1px solid #eee"/>');
-
-  document.getElementById('day-modal').classList.remove('hidden');
-};
-
-document.getElementById('day-modal-close').addEventListener('click', () => {
-  document.getElementById('day-modal').classList.add('hidden');
-});
-document.querySelector('#day-modal .modal-backdrop').addEventListener('click', () => {
-  document.getElementById('day-modal').classList.add('hidden');
-});
-
-// ── INIT ──
-renderDiary();
 renderCalendar();
-renderMapMarkers();
