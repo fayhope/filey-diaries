@@ -300,84 +300,102 @@ function startApp() {
 
   // ── SCRAPBOOK PAGE ──
   function renderScrapbook() {
-    const container = document.getElementById('scrapbook-pages');
+    const bookPages = document.getElementById('book-pages');
+    const pageNum = document.getElementById('book-page-num');
     const days = Object.keys(entries).filter(k => hasContent(entries[k])).sort();
 
+    // cover page
+    const totalDays = days.length;
+    let pagesHtml = `<div class="book-page book-cover">
+      <div class="cover-wave">🌊</div>
+      <div class="cover-title">Your Filey<br>Journey</div>
+      <div class="cover-sub">${totalDays} day${totalDays !== 1 ? 's' : ''} logged<br>since your first visit</div>
+      <div class="cover-hint">Swipe to begin →</div>
+    </div>`;
+
     if (!days.length) {
-      container.innerHTML = '<div class="sb-no-entries">No entries yet.<br>Start logging your days in the Calendar! 🏖️</div>';
-      return;
+      pagesHtml += `<div class="book-page book-cover"><div class="sb-no-entries">No entries yet.<br>Start logging days in the Calendar! 🏖️</div></div>`;
+    } else {
+      const byMonth = {};
+      days.forEach(d => {
+        const mon = d.slice(0, 7);
+        if (!byMonth[mon]) byMonth[mon] = [];
+        byMonth[mon].push(d);
+      });
+
+      const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+      Object.keys(byMonth).sort().forEach(mon => {
+        const [y, m] = mon.split('-').map(Number);
+        const monthName = new Date(y, m-1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+        const daysInMonth = new Date(y, m, 0).getDate();
+        const firstDow = (new Date(y, m-1, 1).getDay() + 6) % 7;
+
+        let calCells = DAY_NAMES.map(d => `<div class="sb-cal-name">${d}</div>`).join('');
+        for (let i = 0; i < firstDow; i++) calCells += '<div class="sb-cal-day empty"></div>';
+        for (let d = 1; d <= daysInMonth; d++) {
+          const key = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+          const e = entries[key];
+          const stamped = hasContent(e);
+          const salah = e && e.salah;
+          calCells += `<div class="sb-cal-day${stamped?' stamped':''}${salah?' salah':''}">${d}</div>`;
+        }
+
+        pagesHtml += `<div class="book-page book-month">
+          <div class="book-month-header">${monthName}</div>
+          <div class="sb-mini-cal">${calCells}</div>
+        </div>`;
+
+        byMonth[mon].forEach(key => {
+          const e = entries[key];
+          const photos = e.photo_urls || [];
+          const chips = [];
+          if (e.salah) chips.push('🐱 Salah');
+          (e.companions||[]).forEach(c => chips.push('👤 '+c));
+
+          const dateLabel = new Date(`${key}T12:00:00`).toLocaleDateString('en-GB', {
+            weekday: 'long', day: 'numeric', month: 'long'
+          });
+
+          const shown = photos.slice(0, 2);
+          const extra = photos.length - shown.length;
+          const photoHtml = shown.length
+            ? shown.map((p, i) =>
+                `<div class="sb-photo">
+                  <img src="${p}" loading="lazy" />
+                  ${i === shown.length - 1 && extra > 0 ? `<div class="sb-photo-more">+${extra}</div>` : ''}
+                </div>`).join('')
+            : '<div class="sb-no-photo">🏖️</div>';
+
+          const chipsHtml = chips.map(c => `<span class="sb-chip">${c}</span>`).join('');
+
+          pagesHtml += `<div class="book-page book-spread">
+            <div class="sb-page-left">
+              <div class="sb-photos">${photoHtml}</div>
+            </div>
+            <div class="sb-page-right">
+              <div class="sb-day-title">${dateLabel}</div>
+              ${chips.length ? `<div class="sb-chips">${chipsHtml}</div>` : ''}
+              <div class="sb-text">${e.notes || ''}</div>
+            </div>
+          </div>`;
+        });
+      });
     }
 
-    // group by month
-    const byMonth = {};
-    days.forEach(d => {
-      const mon = d.slice(0, 7); // "YYYY-MM"
-      if (!byMonth[mon]) byMonth[mon] = [];
-      byMonth[mon].push(d);
-    });
+    bookPages.innerHTML = pagesHtml;
 
-    const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-    let html = '';
-
-    Object.keys(byMonth).sort().forEach(mon => {
-      const [y, m] = mon.split('-').map(Number);
-      const monthName = new Date(y, m-1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-      const daysInMonth = new Date(y, m, 0).getDate();
-      const firstDow = (new Date(y, m-1, 1).getDay() + 6) % 7;
-
-      // mini calendar
-      let calCells = DAYS.map(d => `<div class="sb-cal-name">${d}</div>`).join('');
-      for (let i = 0; i < firstDow; i++) calCells += '<div class="sb-cal-day empty"></div>';
-      for (let d = 1; d <= daysInMonth; d++) {
-        const key = `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        const e = entries[key];
-        const stamped = hasContent(e);
-        const salah = e && e.salah;
-        calCells += `<div class="sb-cal-day${stamped?' stamped':''}${salah?' salah':''}">${d}</div>`;
-      }
-
-      html += `<div class="sb-month-page">
-        <div class="sb-month-title">${monthName}</div>
-        <div class="sb-mini-cal">${calCells}</div>
-      </div>`;
-
-      // day spreads
-      byMonth[mon].forEach(key => {
-        const e = entries[key];
-        const photos = e.photo_urls || [];
-        const chips = [];
-        if (e.salah) chips.push('🐱 Salah');
-        (e.companions||[]).forEach(c => chips.push('👤 '+c));
-
-        const dateLabel = new Date(`${key}T12:00:00`).toLocaleDateString('en-GB', {
-          weekday: 'long', day: 'numeric', month: 'long'
-        });
-
-        const shown = photos.slice(0, 3);
-        const extra = photos.length - shown.length;
-        const photoHtml = shown.map((p, i) =>
-          `<div class="sb-photo ${shown.length === 2 && i === 0 ? 'sb-photo-half' : shown.length === 2 && i === 1 ? 'sb-photo-half' : ''}">
-            <img src="${p}" loading="lazy" />
-            ${i === shown.length - 1 && extra > 0 ? `<div class="sb-photo-more">+${extra}</div>` : ''}
-          </div>`
-        ).join('');
-
-        const chipsHtml = chips.map(c => `<span class="sb-chip">${c}</span>`).join('');
-
-        html += `<div class="sb-spread">
-          <div class="sb-page-left">
-            <div class="sb-photos">${photoHtml || '<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:2.5rem;opacity:0.3">🏖️</div>'}</div>
-          </div>
-          <div class="sb-page-right">
-            <div class="sb-day-title">${dateLabel}</div>
-            ${chips.length ? `<div class="sb-chips">${chipsHtml}</div>` : ''}
-            <p class="sb-text">${e.notes || ''}</p>
-          </div>
-        </div>`;
-      });
-    });
-
-    container.innerHTML = html;
+    // page indicator
+    const allPages = bookPages.querySelectorAll('.book-page');
+    const total = allPages.length;
+    function updateIndicator() {
+      const idx = Math.round(bookPages.scrollLeft / bookPages.clientWidth);
+      pageNum.textContent = `${idx + 1} / ${total}`;
+    }
+    bookPages.removeEventListener('scroll', bookPages._scrollHandler);
+    bookPages._scrollHandler = updateIndicator;
+    bookPages.addEventListener('scroll', bookPages._scrollHandler, { passive: true });
+    updateIndicator();
   }
 
   // ── TRIP MODAL ──
