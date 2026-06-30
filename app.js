@@ -86,7 +86,7 @@ function renderHome() {
   const { totalDays, fileyCount, pct, trips, salahTrips, companionCount } = computeStats();
 
   document.getElementById('stat-days').textContent = fileyCount;
-  document.getElementById('stat-days-sub').textContent = `out of ${totalDays} days since 6 Jul 2024 · ${pct}%`;
+  document.getElementById('stat-days-sub').textContent = `out of ${totalDays} days since 6 Jul 2026 · ${pct}%`;
   document.getElementById('progress-fill').style.width = pct + '%';
   document.getElementById('stat-trips').textContent = trips;
   document.getElementById('stat-salah').textContent = salahTrips;
