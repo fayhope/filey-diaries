@@ -86,6 +86,7 @@
     <nav class="bottom-nav">
       <button class="nav-btn active" data-view="home"><span>🏠</span><span>Home</span></button>
       <button class="nav-btn" data-view="calendar"><span>📅</span><span>Calendar</span></button>
+      <button class="nav-btn" id="trip-nav-btn"><span>➕</span><span>Trip</span></button>
     </nav>
 
     <!-- Day modal -->
@@ -145,6 +146,48 @@
         <div id="modal-loading" class="modal-loading hidden">
           <div class="spinner"></div>
           <span>Saving…</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRIP MODAL -->
+    <div id="trip-modal" class="modal hidden">
+      <div class="backdrop" id="trip-backdrop"></div>
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-header">
+          <h2>New Trip</h2>
+          <button id="trip-modal-close">✕</button>
+        </div>
+        <div class="sheet-body">
+          <div class="section-label">Dates</div>
+          <div class="date-range-row">
+            <input type="date" id="trip-start" />
+            <span class="date-arrow">→</span>
+            <input type="date" id="trip-end" />
+          </div>
+          <div class="modal-row">
+            <span class="modal-row-label">🐱 Salah came</span>
+            <label class="toggle-wrap">
+              <input type="checkbox" id="trip-salah" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="section-label">Who came?</div>
+          <div id="trip-companion-tags" class="companion-tags"></div>
+          <div class="companion-row">
+            <input type="text" id="trip-companion-input" placeholder="Add a person…" />
+            <button id="trip-companion-add">Add</button>
+          </div>
+          <div class="section-label">Notes (applied to all days)</div>
+          <textarea id="trip-notes" placeholder="What did you get up to?"></textarea>
+        </div>
+        <div class="sheet-footer">
+          <button id="trip-save-btn">Save Trip</button>
+        </div>
+        <div id="trip-loading" class="modal-loading hidden">
+          <div class="spinner"></div>
+          <span>Saving trip…</span>
         </div>
       </div>
     </div>

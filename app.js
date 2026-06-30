@@ -297,6 +297,72 @@ function startApp() {
     }
   });
 
+  // ── TRIP MODAL ──
+  let tripCompanions = [];
+
+  document.getElementById('trip-nav-btn').addEventListener('click', () => {
+    tripCompanions = [];
+    document.getElementById('trip-start').value = '';
+    document.getElementById('trip-end').value = '';
+    document.getElementById('trip-notes').value = '';
+    document.getElementById('trip-salah').checked = false;
+    renderTripTags();
+    document.getElementById('trip-modal').classList.remove('hidden');
+  });
+
+  document.getElementById('trip-modal-close').addEventListener('click', () => {
+    document.getElementById('trip-modal').classList.add('hidden');
+  });
+  document.getElementById('trip-backdrop').addEventListener('click', () => {
+    document.getElementById('trip-modal').classList.add('hidden');
+  });
+
+  function renderTripTags() {
+    document.getElementById('trip-companion-tags').innerHTML = tripCompanions.map((c,i) => `
+      <span class="companion-tag">${c}<button onclick="window._rtc(${i})">✕</button></span>`).join('');
+  }
+  window._rtc = i => { tripCompanions.splice(i,1); renderTripTags(); };
+
+  document.getElementById('trip-companion-add').addEventListener('click', addTripCompanion);
+  document.getElementById('trip-companion-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); addTripCompanion(); }
+  });
+  function addTripCompanion() {
+    const input = document.getElementById('trip-companion-input');
+    const val = input.value.trim();
+    if (val && !tripCompanions.includes(val)) { tripCompanions.push(val); renderTripTags(); }
+    input.value = '';
+  }
+
+  document.getElementById('trip-save-btn').addEventListener('click', async () => {
+    const start = document.getElementById('trip-start').value;
+    const end = document.getElementById('trip-end').value || start;
+    if (!start) return;
+
+    const notes = document.getElementById('trip-notes').value.trim();
+    const salah = document.getElementById('trip-salah').checked;
+
+    document.getElementById('trip-loading').classList.remove('hidden');
+
+    // build one row per day in the range
+    const rows = [];
+    const cur = new Date(start + 'T12:00:00');
+    const last = new Date(end + 'T12:00:00');
+    while (cur <= last) {
+      const key = cur.toISOString().slice(0,10);
+      rows.push({ date: key, notes, salah, companions: [...tripCompanions], photo_urls: entries[key]?.photo_urls || [] });
+      cur.setDate(cur.getDate() + 1);
+    }
+
+    await db.from('diary_entries').upsert(rows, { onConflict: 'date' });
+    rows.forEach(r => { entries[r.date] = r; });
+
+    document.getElementById('trip-loading').classList.add('hidden');
+    document.getElementById('trip-modal').classList.add('hidden');
+    renderCalendar();
+    renderHome();
+  });
+
   // ── LOAD DATA then re-render ──
   renderCalendar();
   renderHome();

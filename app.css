@@ -287,6 +287,18 @@ textarea:focus { border-color: var(--sky); background: white; }
   flex: 1;
 }
 
+/* DATE RANGE */
+.date-range-row {
+  display: flex; align-items: center; gap: 8px;
+}
+.date-range-row input {
+  flex: 1; padding: 10px 10px;
+  border: 1.5px solid #e5e7eb; border-radius: 10px;
+  font-size: 0.85rem; font-family: inherit; outline: none; background: #fafafa;
+}
+.date-range-row input:focus { border-color: var(--sky); background: white; }
+.date-arrow { color: #6b8fa3; font-size: 1.1rem; flex-shrink: 0; }
+
 /* LOADING */
 .modal-loading {
   position: absolute; inset: 0; background: rgba(255,255,255,0.9);
